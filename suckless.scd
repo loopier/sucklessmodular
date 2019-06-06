@@ -76,44 +76,73 @@ Ndef(\lfp2) <>> Ndef(\fm1);
 Ndef(\fm1) <>> Ndef(\rev1) <>> Ndef(\out);
 (
 /*
+--- DEPRECATED ---
 "n1 0.3"
 "n1 fm1 m24"
 [controlmodule] [value | target]
 [target] = [synth] [param]
 [param] = [paramname][index]
 */
-!!! CHANGE TO [ndef] [param] [value]
-[param] = [paramname ++ [index]]
-[value] = [float | ndef]
+/*
+"n1 2.5"
+"fm1 f 60"
+"fm1 m24 n1"
+
+ndef [param] value
+param = paramname [++ index]
+value = [float | ndef]
+*/
 // returns [paramname, index]
 ~cmd = ();
 ~cmd.rosetta = Dictionary.newFrom(List[
 	// ugens
-	"n", ~lfnoise0,
-	"p", ~lfpulse,
-	"s", ~lfsaw,
-	"t", ~lftri,
-	"o", ~sine,
-	"d", ~dc,
+	"n", "lfnoise0", // step noise
+	"r", "lfnoise1", // ramp noise
+	"q", "lfnoise2", // quadratic noise
+	"p", "lfpulse", // π
+	"s", "lfsaw", // /
+	"t", "lftri", // ^
+	"o", "sine", // ~
+	// "d", "dc",
 	// "e", "Env",
 	// modifiers
-	"r", ~range,
+	// "r", "range",
 	// params
-	"m", \mod,
-	"a", \amp,
-	"f", \freq,
+	"m", "mod", // fm modulator - \mod12 = op1 modulated by op2
+	"a", "amp",
+	"f", "freq",
+	"deg", "degree",
+	"octave", "octave",
+	"scale", "scale",
 ]);
+
 ~cmd.splitItem = { |self, input|
-	var paramname = input[0];
-	var index = input.copyRange(1,input.size-1);
-	[paramname, index].postln;
-	// [paramname].postln;
+	var intindex = if (input.findRegexp("[0-9]").size > 0) {input.findRegexp("[0-9]")[0][0]} {input.size};
+	// var intindex = "[0-9]".matchRegexp(input);
+	var name = input.copyRange(0, intindex-1);
+	var number = input.copyRange(intindex,input.size-1);
+	// ["intindex", intindex].postln;
+	// ["name", name].postln;
+	// ["index", index].postln;
+	[name, number, intindex]
 };
+
+~cmd.paramName = { |self, name|
+	// var symbol = ~cmd.rosetta[~cmd.plitItem(name)];
+	var items = ~cmd.splitItem(name);
+	var  ugen = ~cmd.rosetta[items[0]];
+	var number = items.copyRange(1, items.size).asString;
+	name = ugen++number;
+	[ugen, number];
+};
+
 ~cmd.process = { |self, input|
 	var items = input.split($ );
-	var control = items[0];
-	var controlname = ~cmd.splitItem(control)[0].asString;
-	var controlugen = ~cmd.rosetta[controlname];
+	var ndef = items[0].asSymbol;
+	// var cmd = ~cmd.splitItem(ndef)[0].asString;
+	var param = if (not(items[1].asFloat.asBoolean)) {~cmd.paramName(items[1])} {\in};
+	var value = if (items[1].asFloat.asBoolean) {items[1].asFloat} {items[2]};
+	/*var controlugen = ~cmd.rosetta[controlname];
 	var valueortarget = items[1];
 	var isNumber = (valueortarget.findRegexpAt("[0-9]") != nil);
 	var paramname = nil;
@@ -137,22 +166,20 @@ Ndef(\fm1) <>> Ndef(\rev1) <>> Ndef(\out);
 		["control", control].postln;
 		Ndef(valueortarget.asSymbol, ~fm).play;
 		Ndef(valueortarget.asSymbol).set(paramname, Ndef(control.asSymbol));
-	};
+	};*/
 
-	// [input].postln;
+	["input", input].postln;
+	// ["items1", items[1]].postln;
 	// [items].postln;
 	// [control, controlname, controlugen, valueortarget, isNumber, paramname].postln;
+	["ndef", ndef].postln;
+	["param", param].postln;
+	["value", value].postln;
 	"".postln;
 };
-// ~cmd.process("n1 fm1 a1");
-~cmd.process("p1 1");
-~cmd.process("p2 2");
-~cmd.process("d 60 fm1 f");
-~cmd.process("p1 fm1 a1");
-~cmd.process("d1 fm1 f");
-~cmd.process("p2 fm1 a2");
-Ndef(\fm1).get(\freq, {|f| f.postln});
-// ~cmd.process("n1 fm1 m2456");
-// input.interpretPrint;
-// input.asCompileString;
+~cmd.process("p40 1");
+~cmd.process("fm1 a1 p40");
+~cmd.process("fm1 f 440");
+~cmd.process("fm1 deg 0");
+~cmd.process("fm1 mod16 s3");
 )
