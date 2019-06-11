@@ -1,13 +1,13 @@
 (
 
-SynthDef(\dc, { Out.kr(\out.kr(0), \in.kr(1))}).store;
-SynthDef(\lfnoise0, { Out.kr(\out.kr(0), LFNoise0.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
-SynthDef(\lfnoise1, { Out.kr(\out.kr(0), LFNoise1.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
-SynthDef(\lfnoise2, { Out.kr(\out.kr(0), LFNoise2.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
-SynthDef(\lfpulse, { Out.kr(\out.kr(0), LFPulse.kr(\freq.kr(1)))}).store;
-SynthDef(\lfsaw, { Out.kr(\out.kr(0), LFSaw.kr(\freq.kr(1)))}).store;
-SynthDef(\lftri, { Out.kr(\out.kr(0), LFTri.kr(\freq.kr(1)))}).store;
-SynthDef(\lfosc, { Out.kr(\out.kr(0), SinOsc.kr(\freq.kr(1)))}).store;
+// SynthDef(\dc, { Out.kr(\out.kr(0), \in.kr(1))}).store;
+// SynthDef(\lfnoise0, { Out.kr(\out.kr(0), LFNoise0.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
+// SynthDef(\lfnoise1, { Out.kr(\out.kr(0), LFNoise1.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
+// SynthDef(\lfnoise2, { Out.kr(\out.kr(0), LFNoise2.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
+// SynthDef(\lfpulse, { Out.kr(\out.kr(0), LFPulse.kr(\freq.kr(1)))}).store;
+// SynthDef(\lfsaw, { Out.kr(\out.kr(0), LFSaw.kr(\freq.kr(1)))}).store;
+// SynthDef(\lftri, { Out.kr(\out.kr(0), LFTri.kr(\freq.kr(1)))}).store;
+// SynthDef(\lfosc, { Out.kr(\out.kr(0), SinOsc.kr(\freq.kr(1)))}).store;
 SynthDef(\gverb, { Out.ar(\out.kr(0), GVerb.ar(\in.ar(0), \room.kr(10), \revtime.kr(3), \damp.kr(0.5), mul:\level.kr(1)))}).store;
 SynthDef(\delay, { Out.ar(\out.kr(0), AllpassC.ar(\in.ar(0), 2, \delaytime.kr(0.2), \decaytime.kr(1), mul:\level.kr(1)))}).store;
 SynthDef(\midicps, {Out.kr(\out.kr(0), \in.kr(60).midicps)}).store;
@@ -56,6 +56,17 @@ this.preProcessor = { |codeBlock|
 		{code.beginsWith("clear")} {
 			"Ndef(\\"++items[1]++").clear;";
 		}
+		// !!! FIXME: Need to change to something more efficient
+		{code.beginsWith("lf")} {
+			var wave = code.split($ )[0];
+			case
+			{wave.beginsWith("lfnoise")}{wave = wave.replace("lfnoise", "LFNoise")}
+			{wave.beginsWith("lfpulse")}{wave = wave.replace("lfpulse", "LFPulse")}
+			{wave.beginsWith("lfsaw")}{wave = wave.replace("lfsaw", "LFSaw")}
+			{wave.beginsWith("lftri")}{wave = wave.replace("lftri", "LFTri")}
+			{wave.beginsWith("lfsine")}{wave = wave.replace("lfsine", "SinOsc")};
+			"Ndef(\\"++items[1]++", {"++wave++".kr(\\freq.kr(1)).range(\\min.kr(0), \\max.kr(1))});";
+		}
 		{true} {
 			var name = items[0];
 			var param = items[1];
@@ -75,8 +86,24 @@ add fm fm7
 add out outs
 out in fm
 play out
-fm amp1 0.1
-fm amp2 0.2
-add lfp1 lfpulse
-fm amp2 lfp1
-flp1 freq 2
+lfpulse p1
+p1 max 0.02
+fm amp1 p1
+lfpulse p2
+p2 max 0.02
+p2 freq 3
+fm amp2 p2
+lfsaw s1
+s1 freq 0.25
+fm mod16 s1
+fm freq6 0.25
+s2 freq 0.5
+fm mod25 s1
+fm freq5 0.5
+lfnoise0 n1
+fm mod11 n1
+fm amp1 0.05
+add vb gverb
+vb in fm
+out in vb
+clear vb
