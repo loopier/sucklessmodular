@@ -1,23 +1,23 @@
 (
-
-// SynthDef(\dc, { Out.kr(\out.kr(0), \in.kr(1))}).add;
-// SynthDef(\lfnoise0, { Out.kr(\out.kr(0), LFNoise0.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).add;
-// SynthDef(\lfnoise1, { Out.kr(\out.kr(0), LFNoise1.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).add;
-// SynthDef(\lfnoise2, { Out.kr(\out.kr(0), LFNoise2.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).add;
-// SynthDef(\lfpulse, { Out.kr(\out.kr(0), LFPulse.kr(\freq.kr(1)))}).add;
-// SynthDef(\lfsaw, { Out.kr(\out.kr(0), LFSaw.kr(\freq.kr(1)))}).add;
-// SynthDef(\lftri, { Out.kr(\out.kr(0), LFTri.kr(\freq.kr(1)))}).add;
-// SynthDef(\lfosc, { Out.kr(\out.kr(0), SinOsc.kr(\freq.kr(1)))}).add;
-SynthDef(\gverb, { Out.ar(\out.kr(0), GVerb.ar(\in.ar(0), \room.kr(10), \revtime.kr(3), \damp.kr(0.5), mul:\level.kr(1)))}).add;
-SynthDef(\delay, { Out.ar(\out.kr(0), AllpassC.ar(\in.ar(0), 2, \delaytime.kr(0.2), \decaytime.kr(1), mul:\level.kr(1)))}).add;
-SynthDef(\midicps, {Out.kr(\out.kr(0), \in.kr(60).midicps)}).add;
-SynthDef(\out, { Out.ar(\out.kr(0), \in.ar(0))}).add;
-SynthDef(\outs, { Out.ar(\out.kr(0), \in.ar(0!2))}).add;
-SynthDef(\sine, { Out.ar(\out.kr(0), SinOsc.ar(\freq.kr(440), mul:\amp.kr(1)))}).add;
-SynthDef(\saw, { Out.ar(\out.kr(0), Saw.ar(\freq.kr(440), mul:\amp.kr(1)))}).add;
-SynthDef(\pulse, { Out.ar(\out.kr(0), Pulse.ar(\freq.kr(440), mul:\amp.kr(1)))}).add;
-SynthDef(\whitenoise, { Out.ar(\out.kr(0), WhiteNoise.ar(\amp.kr(1))) }).add;
-SynthDef(\fm7, {
+~modules = IdentityDictionary.new;
+~modules.put(\dc, { \in.kr(1)});
+~modules.put(\lfnoise0, { LFNoise0.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1))});
+~modules.put(\lfnoise1, { LFNoise1.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1))});
+~modules.put(\lfnoise2, { LFNoise2.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1))});
+~modules.put(\lfpulse, { LFPulse.kr(\freq.kr(1))});
+~modules.put(\lfsaw, { LFSaw.kr(\freq.kr(1))});
+~modules.put(\lftri, { LFTri.kr(\freq.kr(1))});
+~modules.put(\lfosc, { SinOsc.kr(\freq.kr(1))});
+~modules.put(\gverb, { GVerb.ar(\in.ar(0), \room.kr(10), \revtime.kr(3), \damp.kr(0.5), mul:\level.kr(1))});
+~modules.put(\delay, { AllpassC.ar(\in.ar(0), 2, \delaytime.kr(0.2), \decaytime.kr(1), mul:\level.kr(1))});
+~modules.put(\midicps, {\in.kr(60).midicps});
+~modules.put(\out, { \in.ar(0)});
+~modules.put(\outs, { \in.ar(0!2)});
+~modules.put(\sine, { SinOsc.ar(\freq.kr(440), mul:\amp.kr(1))});
+~modules.put(\saw, { Saw.ar(\freq.kr(440), mul:\amp.kr(1))});
+~modules.put(\pulse, { Pulse.ar(\freq.kr(440), mul:\amp.kr(1))});
+~modules.put(\whitenoise, { WhiteNoise.ar(\amp.kr(1)) });
+~modules.put(\fm7, {
 	var sig, env;
 	var freq = \freq.kr(440);
 	var amp = \amp.kr(1);
@@ -36,7 +36,7 @@ SynthDef(\fm7, {
 
 	sig = FM7.ar(ctls, mods) * amps;
 	Out.ar(out, Splay.ar(sig * amp, spread));
-}).add;
+});
 
 )
 (
@@ -45,21 +45,8 @@ this.preProcessor = { |codeBlock|
 		var items = code.split($ );
 		case
 		{code.beginsWith("add")} {
-			var ugen = items[2];
-			// FIXME: This is ugly.  They should be SynthDefs, but there's a
-			// problem passing .kr SynthDef sources to Ndefs.  It doesn't work like
-			// .ar SynthDefs.
-			if (ugen.beginsWith("lf")) {
-			case
-			{ugen.beginsWith("lfnoise")}{ugen = ugen.replace("lfnoise", "LFNoise")}
-			{ugen.beginsWith("lfpulse")}{ugen = ugen.replace("lfpulse", "LFPulse")}
-			{ugen.beginsWith("lfsaw")}{ugen = ugen.replace("lfsaw", "LFSaw")}
-			{ugen.beginsWith("lftri")}{ugen = ugen.replace("lftri", "LFTri")}
-			{ugen.beginsWith("lfsine")}{ugen = ugen.replace("lfsine", "SinOsc")};
-			"Ndef(\\"++items[1]++", {"++ugen++".kr(\\freq.kr(1)).range(\\min.kr(0), \\max.kr(1))});";
-			} {
-				"Ndef(\\"++items[1]++", \\"++items[2]++");";
-			};
+			~modules.at(items[2].asSymbol).asCompileString.postln;
+			"Ndef(\\"++items[1]++", "++~modules.at(items[2].asSymbol).asCompileString++");";
 		}
 		{code.beginsWith("play")} {
 			"Ndef(\\"++items[1]++").play;";
@@ -86,17 +73,20 @@ this.preProcessor = { |codeBlock|
 )
 this.preProcessor = nil;
 add fm fm7
+add sin sine
 add out outs
-out in fm
+out in 0
+out in 0
 play out
 add p1 lfpulse
 p1 max 0.02
 fm amp1 p1
+sin amp p1
 add p2 lfpulse
 p2 max 0.02
 p2 freq 3
 fm amp2 p2
-lfsaw s1
+add s1 lfsaw
 s1 freq 0.25
 fm mod16 s1
 fm freq6 0.25
