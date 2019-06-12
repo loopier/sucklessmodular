@@ -1,22 +1,22 @@
 (
 
-// SynthDef(\dc, { Out.kr(\out.kr(0), \in.kr(1))}).store;
-// SynthDef(\lfnoise0, { Out.kr(\out.kr(0), LFNoise0.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
-// SynthDef(\lfnoise1, { Out.kr(\out.kr(0), LFNoise1.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
-// SynthDef(\lfnoise2, { Out.kr(\out.kr(0), LFNoise2.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).store;
-// SynthDef(\lfpulse, { Out.kr(\out.kr(0), LFPulse.kr(\freq.kr(1)))}).store;
-// SynthDef(\lfsaw, { Out.kr(\out.kr(0), LFSaw.kr(\freq.kr(1)))}).store;
-// SynthDef(\lftri, { Out.kr(\out.kr(0), LFTri.kr(\freq.kr(1)))}).store;
-// SynthDef(\lfosc, { Out.kr(\out.kr(0), SinOsc.kr(\freq.kr(1)))}).store;
-SynthDef(\gverb, { Out.ar(\out.kr(0), GVerb.ar(\in.ar(0), \room.kr(10), \revtime.kr(3), \damp.kr(0.5), mul:\level.kr(1)))}).store;
-SynthDef(\delay, { Out.ar(\out.kr(0), AllpassC.ar(\in.ar(0), 2, \delaytime.kr(0.2), \decaytime.kr(1), mul:\level.kr(1)))}).store;
-SynthDef(\midicps, {Out.kr(\out.kr(0), \in.kr(60).midicps)}).store;
-SynthDef(\out, { Out.ar(\out.kr(0), \in.ar(0))}).store;
-SynthDef(\outs, { Out.ar(\out.kr(0), \in.ar(0!2))}).store;
-SynthDef(\sine, { Out.ar(\out.kr(0), SinOsc.ar(\freq.kr(440), mul:\amp.kr(1)))}).store;
-SynthDef(\saw, { Out.ar(\out.kr(0), Saw.ar(\freq.kr(440), mul:\amp.kr(1)))}).store;
-SynthDef(\pulse, { Out.ar(\out.kr(0), Pulse.ar(\freq.kr(440), mul:\amp.kr(1)))}).store;
-SynthDef(\whitenoise, { Out.ar(\out.kr(0), WhiteNoise.ar(\amp.kr(1))) }).store;
+// SynthDef(\dc, { Out.kr(\out.kr(0), \in.kr(1))}).add;
+// SynthDef(\lfnoise0, { Out.kr(\out.kr(0), LFNoise0.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).add;
+// SynthDef(\lfnoise1, { Out.kr(\out.kr(0), LFNoise1.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).add;
+// SynthDef(\lfnoise2, { Out.kr(\out.kr(0), LFNoise2.kr(\freq.kr(1)).range(\min.kr(0), \max.kr(1)))}).add;
+// SynthDef(\lfpulse, { Out.kr(\out.kr(0), LFPulse.kr(\freq.kr(1)))}).add;
+// SynthDef(\lfsaw, { Out.kr(\out.kr(0), LFSaw.kr(\freq.kr(1)))}).add;
+// SynthDef(\lftri, { Out.kr(\out.kr(0), LFTri.kr(\freq.kr(1)))}).add;
+// SynthDef(\lfosc, { Out.kr(\out.kr(0), SinOsc.kr(\freq.kr(1)))}).add;
+SynthDef(\gverb, { Out.ar(\out.kr(0), GVerb.ar(\in.ar(0), \room.kr(10), \revtime.kr(3), \damp.kr(0.5), mul:\level.kr(1)))}).add;
+SynthDef(\delay, { Out.ar(\out.kr(0), AllpassC.ar(\in.ar(0), 2, \delaytime.kr(0.2), \decaytime.kr(1), mul:\level.kr(1)))}).add;
+SynthDef(\midicps, {Out.kr(\out.kr(0), \in.kr(60).midicps)}).add;
+SynthDef(\out, { Out.ar(\out.kr(0), \in.ar(0))}).add;
+SynthDef(\outs, { Out.ar(\out.kr(0), \in.ar(0!2))}).add;
+SynthDef(\sine, { Out.ar(\out.kr(0), SinOsc.ar(\freq.kr(440), mul:\amp.kr(1)))}).add;
+SynthDef(\saw, { Out.ar(\out.kr(0), Saw.ar(\freq.kr(440), mul:\amp.kr(1)))}).add;
+SynthDef(\pulse, { Out.ar(\out.kr(0), Pulse.ar(\freq.kr(440), mul:\amp.kr(1)))}).add;
+SynthDef(\whitenoise, { Out.ar(\out.kr(0), WhiteNoise.ar(\amp.kr(1))) }).add;
 SynthDef(\fm7, {
 	var sig, env;
 	var freq = \freq.kr(440);
@@ -36,7 +36,7 @@ SynthDef(\fm7, {
 
 	sig = FM7.ar(ctls, mods) * amps;
 	Out.ar(out, Splay.ar(sig * amp, spread));
-}).store;
+}).add;
 
 )
 (
@@ -45,7 +45,21 @@ this.preProcessor = { |codeBlock|
 		var items = code.split($ );
 		case
 		{code.beginsWith("add")} {
-			"Ndef(\\"++items[1]++", \\"++items[2]++");";
+			var ugen = items[2];
+			// FIXME: This is ugly.  They should be SynthDefs, but there's a
+			// problem passing .kr SynthDef sources to Ndefs.  It doesn't work like
+			// .ar SynthDefs.
+			if (ugen.beginsWith("lf")) {
+			case
+			{ugen.beginsWith("lfnoise")}{ugen = ugen.replace("lfnoise", "LFNoise")}
+			{ugen.beginsWith("lfpulse")}{ugen = ugen.replace("lfpulse", "LFPulse")}
+			{ugen.beginsWith("lfsaw")}{ugen = ugen.replace("lfsaw", "LFSaw")}
+			{ugen.beginsWith("lftri")}{ugen = ugen.replace("lftri", "LFTri")}
+			{ugen.beginsWith("lfsine")}{ugen = ugen.replace("lfsine", "SinOsc")};
+			"Ndef(\\"++items[1]++", {"++ugen++".kr(\\freq.kr(1)).range(\\min.kr(0), \\max.kr(1))});";
+			} {
+				"Ndef(\\"++items[1]++", \\"++items[2]++");";
+			};
 		}
 		{code.beginsWith("play")} {
 			"Ndef(\\"++items[1]++").play;";
@@ -55,17 +69,6 @@ this.preProcessor = { |codeBlock|
 		}
 		{code.beginsWith("clear")} {
 			"Ndef(\\"++items[1]++").clear;";
-		}
-		// !!! FIXME: Need to change to something more efficient
-		{code.beginsWith("lf")} {
-			var wave = code.split($ )[0];
-			case
-			{wave.beginsWith("lfnoise")}{wave = wave.replace("lfnoise", "LFNoise")}
-			{wave.beginsWith("lfpulse")}{wave = wave.replace("lfpulse", "LFPulse")}
-			{wave.beginsWith("lfsaw")}{wave = wave.replace("lfsaw", "LFSaw")}
-			{wave.beginsWith("lftri")}{wave = wave.replace("lftri", "LFTri")}
-			{wave.beginsWith("lfsine")}{wave = wave.replace("lfsine", "SinOsc")};
-			"Ndef(\\"++items[1]++", {"++wave++".kr(\\freq.kr(1)).range(\\min.kr(0), \\max.kr(1))});";
 		}
 		{true} {
 			var name = items[0];
@@ -86,10 +89,10 @@ add fm fm7
 add out outs
 out in fm
 play out
-lfpulse p1
+add p1 lfpulse
 p1 max 0.02
 fm amp1 p1
-lfpulse p2
+add p2 lfpulse
 p2 max 0.02
 p2 freq 3
 fm amp2 p2
